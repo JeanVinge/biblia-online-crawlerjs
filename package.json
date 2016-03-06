@@ -1,0 +1,13 @@
+{
+  "name": "biblia-online-crawlerjs",
+  "version": "0.0.0",
+  "description": "A Crawler for the wwww.bibliaonline.com.br site, just to make opensource resources of the bible",
+  "main": "crawler.js",
+  "author": "Jean Vinge",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^0.19.0",
+    "url-parse": "^1.0.5",
+    "request": "^2.65.0"
+  }
+}
