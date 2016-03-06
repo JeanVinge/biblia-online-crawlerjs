@@ -6,83 +6,73 @@ var baseURL = "https://www.bibliaonline.com.br/";
 var oldTestament = [];
 var newTestament = [];
 
-request(baseURL, function(error, response, body) {
+makeRequest(baseURL, function(object) {
 
-  var testaments = cheerio.load(body);
-  if(error) {
-    console.log("Error: " + error);
-  }
-  // Check status code (200 is HTTP OK)
-  console.log("Status code: " + response.statusCode);
-  if(response.statusCode === 200) {
+  parseTestaments(object, 'div.oldTestament li', function(object) {
 
-    oldTestament = parseTestaments(testaments, 'div.oldTestament li');
-    newTestament = parseTestaments(testaments, 'div.newTestament li');
+    oldTestament = object;
 
-    //console.log(oldTestament);
-    //console.log(newTestament);
+    object.forEach(function(book){
 
-    oldTestament.forEach(function(value){
+      getNumberOfChapters(book.link, function(pages) {
 
-      var link = baseURL + "acf/" + value.link + "/";
-      numberOfChapters(link);
+        pages.forEach(function(page) {
+          console.log(page);
 
-    });
+          getChapter(book.link + "/" + page, function(chapter) {
 
-  }
-});
-
-function parseChapter(link) {
-
-    console.log("accessing = " + link);
-  request(link, function(error, response, body) {
-
-    if(error) {
-        console.log("Error: " + error);
-    }
-    // Check status code (200 is HTTP OK)
-    console.log("Status code: " + response.statusCode);
-    if(response.statusCode === 200) {
-
-      var verses = [];
-
-      var cheer = cheerio.load(body);
-
-      var title = cheer("header h1").text();
-
-      console.log("titulo :" + title);
-
-      cheer('span.text').each(function(i, element){
-
-        var number = cheer(this).prev().text();
-        var verse = cheer(this).text();
-
-        //console.log(number);
-        //console.log(verse);
-
-        var metadata = {
-          number: number,
-          verse: verse
-        }
-
-        verses.push(metadata);
+          });
+        });
       });
-    }
-
-    var chapter = {
-      title: title,
-      verses: verses
-    }
-
-    console.log(chapter);
+    });
 
   });
 
+});
+
+//
+// Handler API
+//
+
+function makeRequest(path, success) {
+  request(path, function(error, response, body) {
+
+    handleRequest(error, response, body, function() {
+
+      success(body);
+
+    }, function(error) {
+
+    });
+  });
 }
 
-function parseTestaments($, tag) {
+function handleRequest(error, response, body, success, failure) {
+
+  if(error) {
+    console.log("Error: " + error);
+    failure(error);
+  }
+
+  if(response.statusCode === 200) {
+    success();
+  } else {
+
+    console.log("Error with status code: " + response.statusCode);
+    failure();
+  }
+
+}
+
+//
+// Parse Testament, returns a object that contains, books and link to the books.
+//
+
+function parseTestaments(body, tag, callback) {
 
   var parsedObj = []
+
+  var $ = cheerio.load(body);
 
   $(tag).each(function(i, element){
 
@@ -99,38 +89,90 @@ function parseTestaments($, tag) {
     parsedObj.push(metadata);
   });
 
-  return parsedObj;
+  callback(parsedObj);
 }
 
-function numberOfChapters(link) {
+//
+// Returns the number of chapters that a book has
+//
 
-  request(link, function(error, response, body) {
+function numberOfChapters(body, tag, callback) {
 
-  console.log("chapters accessing = " + link);
-    if(error) {
-      console.log("Error: " + error);
+  var $ = cheerio.load(body);
+  var pages = [];
+
+  $(tag).each(function(i, element){
+
+    var page = $(element).text();
+
+    pages.push(page);
+  });
+
+  callback(pages);
+}
+
+//
+// Manager to get number of chapters
+//
+
+function getNumberOfChapters(path, callback) {
+
+  console.log("parsing number of chapters in :" + baseURL + path);
+
+  // todo: make for other bibles
+  makeRequest(baseURL + "acf/" + path, function(body) {
+
+    numberOfChapters(body, 'ul.ChapterList li', function(pages) {
+
+      callback(pages);
+
+    });
+  });
+}
+
+//
+// Returns a chapter that contain verses
+//
+
+function parseChapter(body, callback) {
+  var verses = [];
+
+  var $ = cheerio.load(body);
+  var title = $("header h1").text();
+
+  $('span.text').each(function(i, element){
+
+    var number = $(element).prev().text();
+    var verse = $(element).text();
+
+    var metadata = {
+      number: number,
+      verse: verse
     }
 
-    // Check status code (200 is HTTP OK)
-    console.log("Status code: " + response.statusCode);
-    if(response.statusCode === 200) {
+    verses.push(metadata);
+  });
 
-      var cheer = cheerio.load(body);
-      var pages = [];
+  var chapter = {
+    title: title,
+    verses: verses
+  }
 
-      cheer('ul.ChapterList li').each(function(i, element){
+  console.log(chapter);
 
-        var page = cheer(element).text();
+  callback(chapter);
+}
 
-        console.log("page number = " + page);
-        parseChapter(link + page);
-        
-        pages.push(page);
-      });
+function getChapter(path, callback) {
 
-      var pg = pages[pages.length - 1];
+  var url = baseURL + "acf/" + path;
+  console.log("parsing chapter in :" + url);
 
-      console.log("number of pages = " + pg);
-    }
+  // todo: make for other bibles
+  makeRequest(url, function(body) {
+
+    parseChapter(body, function(chapter) {
+
+    });
   });
 }

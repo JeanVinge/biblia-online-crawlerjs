@@ -1,47 +1,75 @@
-var request = require('request');
-var cheerio = require('cheerio');
+function parseChapter(link) {
 
-var page = "https://www.bibliaonline.com.br/acf/gn/1";
+  console.log("accessing = " + link);
+  request(link, function(error, response, body) {
 
-request(page, function(error, response, body) {
-
-  if(error) {
+    if(error) {
       console.log("Error: " + error);
-  }
-  // Check status code (200 is HTTP OK)
-  console.log("Status code: " + response.statusCode);
-  if(response.statusCode === 200) {
+    }
+    // Check status code (200 is HTTP OK)
+    console.log("Status code: " + response.statusCode);
+    if(response.statusCode === 200) {
 
-    var verses = [];
+      var verses = [];
 
-    var $ = cheerio.load(body);
+      var cheer = cheerio.load(body);
 
-    var title = $("header h1").text();
+      var title = cheer("header h1").text();
 
-    console.log("titulo :" + title);
+      console.log("titulo :" + title);
 
-    $('span.text').each(function(i, element){
+      cheer('span.text').each(function(i, element){
 
-      var number = $(this).prev().text();
-      var verse = $(this).text();
+        var number = cheer(this).prev().text();
+        var verse = cheer(this).text();
 
-      //console.log(number);
-      //console.log(verse);
+        //console.log(number);
+        //console.log(verse);
 
-      var metadata = {
-        number: number,
-        verse: verse
+        var metadata = {
+          number: number,
+          verse: verse
+        }
+
+        verses.push(metadata);
+      });
+    }
+
+    var chapter = {
+      title: title,
+      verses: verses
+    }
+
+    console.log(chapter);
+
+  });
+
+}
+
+function parseChapter(body, callback) {
+      var verses = [];
+
+      var $ = cheerio.load(body);
+      var title = $("header h1").text();
+
+      $('span.text').each(function(i, element){
+
+        var number = $(element).prev().text();
+        var verse = $(element).text();
+
+        var metadata = {
+          number: number,
+          verse: verse
+        }
+
+        verses.push(metadata);
+      });
+
+      var chapter = {
+        title: title,
+        verses: verses
       }
-
-      verses.push(metadata);
-    });
-  }
-
-  var chapter = {
-    title: title,
-    verses: verses
-  }
-
-  console.log(chapter);
-
-});
+      
+      console.log(chapter);
+    }
+  });
